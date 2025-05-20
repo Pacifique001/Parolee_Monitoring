@@ -39,7 +39,7 @@ class UserResource extends JsonResource
             'permissions' => PermissionResource::collection($user->getAllPermissions()),
 
             'assigned_iot_device' => new IotDeviceResource($this->whenLoaded('iotDevice')),
-
+            'direct_permissions' => PermissionResource::collection($user->getDirectPermissions()),
             // Conditionally load profiles (assuming you have these resources created)
             'parolee_profile' => $this->whenLoaded('paroleeProfile', function () use ($user) {
                 // return new ParoleeProfileResource($user->paroleeProfile);

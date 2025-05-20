@@ -1,0 +1,81 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    @apply bg-brand-gray-extralight dark:bg-brand-gray-admin-bg text-brand-gray-dark dark:text-gray-200;
+}
+
+.sidebar-scrollable::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+.sidebar-scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar-scrollable::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2); /* Light for dark sidebar */
+    border-radius: 10px;
+}
+.dark .sidebar-scrollable::-webkit-scrollbar-thumb {
+     background-color: rgba(255, 255, 255, 0.2);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600; /* Adjust based on content bg */
+    border-radius: 10px;
+}
+/* src/index.css or similar */
+.input-style {
+    @apply block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-brand-purple-admin focus:border-brand-purple-admin sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100;
+  }
+  .primary-button {
+    @apply flex items-center px-4 py-2 bg-brand-purple-admin text-white text-sm font-medium rounded-md shadow-sm hover:bg-brand-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple-admin transition ease-in-out duration-150 disabled:opacity-50;
+  }
+  .secondary-button {
+    @apply flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50;
+  }
+  .icon-button {
+    @apply p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
+  }
+  .pagination-button {
+    @apply relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50;
+  }
+  .input-style {
+    @apply block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-brand-purple-admin focus:border-brand-purple-admin sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100;
+  }
+  .primary-button {
+    @apply flex items-center justify-center px-4 py-2 bg-brand-purple-admin text-white text-sm font-medium rounded-md shadow-sm hover:bg-brand-purple-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple-admin transition ease-in-out duration-150 disabled:opacity-50;
+  }
+  .secondary-button {
+    @apply flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50;
+  }
+  .danger-button {
+    @apply flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50;
+  }
+  .icon-button {
+    @apply p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50;
+  }
+  .pagination-button {
+    @apply relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50;
+  }
+  /* Custom scrollbar for specific elements if sidebar-scrollable isn't enough */
+  .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+      @apply bg-gray-300 dark:bg-gray-600;
+      border-radius: 10px;
+  }

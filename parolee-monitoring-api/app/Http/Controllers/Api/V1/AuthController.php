@@ -8,10 +8,15 @@ use App\Http\Resources\UserResource; // Import UserResource
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rules\Password as PasswordValidationRule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response as HttpResponse;
-use Spatie\Permission\Models\Role as SpatieRole; // Alias if needed, or just Role
+use Spatie\Permission\Models\Role as SpatieRole; 
+use App\Notifications\SendPasswordResetOtp; // Import your custom OTP notification
+use Illuminate\Support\Str;// Alias if needed, or just Role
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Cache;
+
 
 class AuthController extends Controller
 {
@@ -23,7 +28,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => ['required', 'confirmed', PasswordValidationRule::defaults()],
             'phone' => ['nullable', 'string', 'max:25'],
             'user_type' => ['sometimes', 'string', \Illuminate\Validation\Rule::in(['parolee', 'officer', 'staff'])],
         ]);
@@ -115,6 +120,70 @@ class AuthController extends Controller
             ]);
         }
         return response()->json(['message' => 'No user authenticated.'], HttpResponse::HTTP_UNAUTHORIZED);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'string', 'email', 'exists:users,email']]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            // Return a generic message to prevent email enumeration
+            return response()->json(['message' => 'If your email address is in our database, you will receive an OTP.'], HttpResponse::HTTP_OK);
+        }
+
+        $otpLength = config('auth.passwords.users.otp_length', 6);
+        $otpExpires = config('auth.passwords.users.otp_expires', 15);
+        $otp = Str::substr(str_shuffle(str_repeat('0123456789', $otpLength)), 0, $otpLength); // Simple numeric OTP
+
+        // Store OTP in cache with user's email as part of the key
+        $cacheKey = 'password_reset_otp_' . $user->email;
+        Cache::put($cacheKey, $otp, now()->addMinutes($otpExpires));
+
+        try {
+            Notification::send($user, new SendPasswordResetOtp($otp, $otpExpires));
+            return response()->json(['message' => 'An OTP has been sent to your email address. It will expire in ' . $otpExpires . ' minutes.']);
+        } catch (\Exception $e) {
+            // Log the error
+            \Illuminate\Support\Facades\Log::error('Failed to send OTP email: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to send OTP. Please try again later.'], HttpResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => ['required', 'string', 'email', 'exists:users,email'],
+            'otp' => ['required', 'string', 'digits:' . config('auth.passwords.users.otp_length', 6)],
+            'password' => ['required', 'confirmed', PasswordValidationRule::defaults()],
+        ]);
+
+        $user = User::where('email', $request->email)->first(); // User should exist due to validation
+
+        $cacheKey = 'password_reset_otp_' . $user->email;
+        $cachedOtp = Cache::get($cacheKey);
+
+        if (!$cachedOtp) {
+            return response()->json(['message' => 'OTP has expired or is invalid.'], HttpResponse::HTTP_BAD_REQUEST);
+        }
+
+        if ($cachedOtp !== $request->otp) {
+            return response()->json(['message' => 'The provided OTP is incorrect.'], HttpResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        // OTP is correct, reset password and clear OTP from cache
+        $user->forceFill([
+            'password' => Hash::make($request->password),
+            'remember_token' => Str::random(60), // Invalidate remember tokens
+        ])->save();
+
+        Cache::forget($cacheKey);
+
+        // Optionally, log the user out of other devices if you have a mechanism for that.
+        // Auth::logoutOtherDevices($request->password); // This is for web sessions
+
+        return response()->json(['message' => 'Your password has been reset successfully!']);
     }
 
     /**

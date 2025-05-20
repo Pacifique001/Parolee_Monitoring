@@ -8,8 +8,9 @@ use Laravel\Sanctum\HasApiTokens; // For Sanctum API tokens
 use Spatie\Permission\Traits\HasRoles; // For Spatie Roles & Permissions
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Contracts\Auth\CanResetPassword;
 
-class User extends Authenticatable
+class User extends Authenticatable implements CanResetPassword
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles,LogsActivity; // Add HasApiTokens and HasRoles
 
