@@ -1,25 +1,20 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import apiClient from '../services/api'; // Your API client
+import apiClient from '../services/api';
+import type { ApiUser } from '../types/api'; // Only ApiUser is needed here as User extends it
 
-// Define types for User and AuthState
-interface User {
-    id: number;
-    name: string;
-    email: string;
-    user_type: 'admin' | 'officer' | 'staff' | 'parolee';
-    roles: { name: string }[];
-    permissions: { name: string }[];
-    // Add other relevant user fields
-}
+// The User type for the context can directly be ApiUser or extend it if needed
+interface User extends ApiUser {}
 
 interface AuthState {
     isAuthenticated: boolean;
     user: User | null;
     token: string | null;
     isLoading: boolean;
-    login: (emailValue: string, passwordValue: string) => Promise<void>;
+    login: (emailValue: string, passwordValue: string) => Promise<User | null>;
     logout: () => Promise<void>;
+    // fetchUser is internal, not necessarily needed in AuthState interface for external consumption
+    // but keeping it if other parts of app might trigger it.
     fetchUser: () => Promise<void>;
     hasRole: (roleName: string) => boolean;
     hasPermission: (permissionName: string) => boolean;
@@ -30,100 +25,149 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(() => {
         const storedUser = localStorage.getItem('authUser');
-        return storedUser ? JSON.parse(storedUser) : null;
+        try {
+            return storedUser ? JSON.parse(storedUser) as User : null;
+        } catch (error) {
+            console.error("Failed to parse stored user:", error);
+            localStorage.removeItem('authUser'); // Clear corrupted data
+            return null;
+        }
     });
     const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
-    const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token); // Initial auth state based on token
+    const [isLoading, setIsLoading] = useState<boolean>(true); // Start true for initial auth check
 
+    const fetchUserInternal = async () => {
+        const currentToken = token || localStorage.getItem('authToken');
+        if (!currentToken) {
+            setIsLoading(false);
+            // Ensure state is cleared if no token
+            if (isAuthenticated) setIsAuthenticated(false);
+            if (user) setUser(null);
+            return;
+        }
+
+        // Ensure Axios header is set if not already
+        if (apiClient.defaults.headers.common['Authorization'] !== `Bearer ${currentToken}`) {
+            apiClient.defaults.headers.common['Authorization'] = `Bearer ${currentToken}`;
+        }
+
+        setIsLoading(true);
+        try {
+            const response = await apiClient.get<User>('/user'); // Expecting User type directly
+            localStorage.setItem('authUser', JSON.stringify(response.data));
+            setUser(response.data);
+            setIsAuthenticated(true);
+        } catch (error: any) {
+            console.error('Failed to fetch user:', error.response?.data?.message || error.message);
+            if (error.response?.status === 401) { // Token is invalid or expired
+                // Call logoutInternal to clear everything without an API call loop
+                clearClientSideAuth();
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    useEffect(() => {
+        // This effect runs once on mount to initialize authentication state
+        // and tries to fetch the user if a token exists.
+        const currentToken = localStorage.getItem('authToken');
+        if (currentToken) {
+            setToken(currentToken); // Sync state with localStorage
+            apiClient.defaults.headers.common['Authorization'] = `Bearer ${currentToken}`;
+            setIsAuthenticated(true); // Assume authenticated if token exists
+            fetchUserInternal(); // Then verify by fetching user
+        } else {
+            setIsLoading(false); // No token, so not loading, not authenticated
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty dependency array: run only on mount
+
+
+    // This effect reacts to programmatic token changes (login/logout)
     useEffect(() => {
         if (token) {
             apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             setIsAuthenticated(true);
-            if (!user) { // Fetch user if token exists but user data is not in state
-                fetchUser().finally(() => setIsLoading(false));
-            } else {
-                setIsLoading(false);
-            }
+            // No need to fetch user here again if login already set it.
+            // If token is set manually without user, fetchUserInternal could be called.
         } else {
             delete apiClient.defaults.headers.common['Authorization'];
             setIsAuthenticated(false);
             setUser(null);
-            setIsLoading(false);
+            localStorage.removeItem('authUser');
+            localStorage.removeItem('authToken');
         }
     }, [token]);
 
 
-    const login = async (emailValue: string, passwordValue: string) => {
+    const login = async (emailValue: string, passwordValue: string): Promise<User | null> => {
+        setIsLoading(true);
         try {
-            const response = await apiClient.post('/login', { email: emailValue, password: passwordValue });
+            const response = await apiClient.post<{
+                message: string;
+                user: User;
+                token: string;
+                token_type: string;
+            }>('/login', { email: emailValue, password: passwordValue });
+
             const { token: newToken, user: userData } = response.data;
             localStorage.setItem('authToken', newToken);
             localStorage.setItem('authUser', JSON.stringify(userData));
-            setToken(newToken);
+            setToken(newToken); // This will trigger the useEffect above to set axios header and isAuthenticated
             setUser(userData);
-            setIsAuthenticated(true);
+            setIsLoading(false);
+            return userData;
         } catch (error) {
-            console.error('Login failed:', error);
-            // You might want to set an error state here to display to the user
-            throw error; // Re-throw to be caught by the login form
+            console.error('Login failed in AuthContext:', error);
+            clearClientSideAuth(); // Clear all auth state on login failure
+            setIsLoading(false);
+            throw error;
         }
     };
 
+    const clearClientSideAuth = () => {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authUser');
+        setToken(null);
+        setUser(null);
+        setIsAuthenticated(false); // Explicitly set to false
+        delete apiClient.defaults.headers.common['Authorization'];
+    };
+
+
     const logout = async () => {
+        setIsLoading(true);
         try {
-            if (token) {
+            // Only call API logout if there's a token we believe is valid
+            if (token || localStorage.getItem('authToken')) {
+                 // Ensure header is set before logout call, just in case
+                if (!apiClient.defaults.headers.common['Authorization'] && localStorage.getItem('authToken')) {
+                    apiClient.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('authToken')}`;
+                }
                 await apiClient.post('/logout');
             }
         } catch (error) {
-            console.error('Logout failed on server, clearing client-side anyway:', error);
+            console.error('Logout API call failed, clearing client-side anyway:', error);
         } finally {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('authUser');
-            setToken(null);
-            setUser(null);
-            setIsAuthenticated(false);
+            clearClientSideAuth();
+            setIsLoading(false);
         }
     };
 
-    const fetchUser = async () => {
-        if (!token && !localStorage.getItem('authToken')) {
-             setIsLoading(false);
-             return;
-        }
-        setIsLoading(true);
-        try {
-            const response = await apiClient.get('/user');
-            localStorage.setItem('authUser', JSON.stringify(response.data));
-            setUser(response.data);
-            setIsAuthenticated(true);
-        } catch (error) {
-            console.error('Failed to fetch user:', error);
-            // This might happen if token is invalid, interceptor should handle it
-            // but we can also clear state here as a fallback
-            if ((error as any).response?.status === 401) {
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('authUser');
-                setToken(null);
-                setUser(null);
-                setIsAuthenticated(false);
-            }
-        } finally {
-             setIsLoading(false);
-        }
-    };
 
     const hasRole = (roleName: string): boolean => {
         return user?.roles?.some(role => role.name === roleName) || false;
     };
 
     const hasPermission = (permissionName: string): boolean => {
-        return user?.permissions?.some(permission => permission.name === permissionName) || false;
+        return user?.all_permissions?.some(permission => permission.name === permissionName) || false;
     };
 
-
     return (
-        <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout, fetchUser, isLoading, hasRole, hasPermission }}>
+        <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout, fetchUser: fetchUserInternal, isLoading, hasRole, hasPermission }}>
             {children}
         </AuthContext.Provider>
     );

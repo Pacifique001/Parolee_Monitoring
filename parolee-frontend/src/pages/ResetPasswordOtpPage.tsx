@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/ResetPasswordOtpPage.tsx
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../services/api';
-import { Key, Lock, ShieldCheck } from 'lucide-react'; // Using ShieldCheck for OTP
+import { ArrowLeft, Key, Lock, ShieldCheck } from 'lucide-react'; // Using ShieldCheck for OTP
 
 const policelogo = '/images/policelogo.png';
 const loginImage = '/images/LoginImage.png';
@@ -72,6 +74,10 @@ const ResetPasswordOtpPage: React.FC = () => {
         );
     }
 
+
+    function config(_arg0: string, _arg1: number): number | undefined {
+        throw new Error('Function not implemented.');
+    }
 
     return (
         <div

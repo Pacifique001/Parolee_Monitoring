@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/ResetPasswordPage.tsx
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../services/api';
 import { Mail, Lock, Key, ArrowLeft } from 'lucide-react';

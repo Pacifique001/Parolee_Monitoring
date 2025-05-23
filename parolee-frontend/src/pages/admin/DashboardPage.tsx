@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // src/pages/admin/DashboardPage.tsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 // import { Head } from '@inertiajs/react'; // If using Inertia, otherwise use React Helmet or similar for <title>
 import apiClient from '../../services/api'; // Your API client
 import AdminLayout from '../../layouts/AdminLayout'; // Your Admin Layout
@@ -8,7 +9,7 @@ import {
     Users, AlertTriangle, HeartPulse, MapPinOff, Thermometer, Gauge, BrainCircuit, Activity,
     MessageSquare, Bell, MapPin as MapPinIcon // Renamed to avoid conflict with Map component
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import {
     Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement,
     Title, Tooltip, Legend, Filler
@@ -157,10 +158,7 @@ const DashboardPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Your mock chat messages and restricted zones (can be kept for now or moved to API)
-    const mockChatMessages = [ /* ... your mockChatMessages ... */ ];
-    const restrictedZones = [ /* ... your restrictedZones ... */ ];
-
+   
 
     useEffect(() => {
         const fetchData = async () => {

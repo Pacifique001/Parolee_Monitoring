@@ -9,10 +9,11 @@ use Spatie\Permission\Traits\HasRoles; // For Spatie Roles & Permissions
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Contracts\Auth\CanResetPassword;
+use illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable implements CanResetPassword
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles,LogsActivity; // Add HasApiTokens and HasRoles
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, LogsActivity; // Add HasApiTokens and HasRoles
 
     protected $fillable = [
         'name',
@@ -59,5 +60,21 @@ class User extends Authenticatable implements CanResetPassword
     public function rehabStaffProfile()
     {
         return $this->hasOne(RehabStaffProfile::class);
+    }
+    public function assignedGeofences(): BelongsToMany
+    {
+        return $this->belongsToMany(GeoFence::class, 'parolee_geofence', 'parolee_user_id', 'geofence_id')
+            ->withTimestamps();
+    }
+    public function assessments() // Assessments conducted ON this user (if they are a parolee)
+    {
+        return $this->hasMany(Assessment::class, 'parolee_user_id');
+    }
+    public function conductedAssessments() // Assessments conducted BY this user (if they are staff)
+    {
+        return $this->hasMany(Assessment::class, 'conducted_by_user_id');
+    }
+    public function conversations() {
+        return $this->belongsToMany(Conversation::class, 'conversation_user')->withTimestamps()->withPivot('last_read_at')->orderBy('conversations.last_reply_at', 'desc');
     }
 }

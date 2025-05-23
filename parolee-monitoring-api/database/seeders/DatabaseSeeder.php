@@ -18,8 +18,13 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class, // Creates Roles and Permissions first
             IotDeviceSeeder::class, 
             UserSeeder::class,  
-                        // Then creates Users and assigns them Roles & Profiles
-            
+            AssessmentSeeder::class,
+            GeoFenceSeeder::class,
+            HealthMetricSeeder::class,
+            MessageSeeder::class,
+            ConversationSeeder::class,
+            AssessmentSeeder::class,
+            GpsLocationSeeder::class,
         ]);
     }
 }

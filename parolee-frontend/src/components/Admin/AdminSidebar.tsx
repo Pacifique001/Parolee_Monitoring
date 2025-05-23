@@ -14,7 +14,7 @@ interface SidebarProps {
 
 const AdminSidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     const location = useLocation();
-    const { logout, user } = useAuth();
+    const { logout } = useAuth();
 
     const menuItems = [
         { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/admin/dashboard', id: 'dashboard' },

@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/admin/UserManagementPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../services/api';
-import type { ApiUser, ApiRole,ApiPermission ,ApiParoleeProfile, ApiOfficerProfile, ApiRehabStaffProfile } from '../../types/api'; // Adjust path
+import type { ApiUser, ApiRole,ApiPermission } from '../../types/api'; // Adjust path
 import AdminLayout from '../../layouts/AdminLayout';
 import UserForm from '../../components/UserManagement/UserForm'; // Assuming this is in components/UserManagement/
 import DeleteConfirmationModal from '../../components/UserManagement/DeleteConfirmationModal';
@@ -10,7 +11,7 @@ import { format } from 'date-fns';
 
 import {
     Users, UserPlus, Edit, Trash2, Search, Info, KeyRound,
-    Briefcase, MapPin as LocationPin, UserCog, UserCheck, Shield, CheckCircle, AlertTriangle, FileText, Phone, Mail,
+    Briefcase, MapPin as LocationPin, UserCog, UserCheck, Shield,  AlertTriangle, FileText, Phone, Mail,
     Calendar, Clock, Award, Building, GraduationCap // Added missing icons
 } from 'lucide-react';
 
@@ -87,7 +88,7 @@ const fetchData = useCallback(async (page = 1, currentSearchTerm = searchTerm, c
     } finally {
         setIsLoading(false);
     }
-}, []); // Empty dependency array for fetchData, parameters will be passed
+}, [activeTab, searchTerm]); // Empty dependency array for fetchData, parameters will be passed
 
 // Main useEffect to trigger user data fetching
 useEffect(() => {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState, type ReactNode, useEffect } from 'react';
 import AdminSidebar from '../components/Admin/AdminSidebar';
@@ -21,7 +22,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     return (
         <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-brand-gray-admin-bg">
             {/* Fixed Header */}
-            <AdminHeader onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
+            
+            <AdminHeader onToggleSidebar={() => setSidebarOpen((prev: any) => !prev)} />
 
             {/* Main Content Area with Sidebar */}
             <div className="flex flex-1 pt-16"> {/* Added pt-16 for header height */}

@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/admin/SystemLogsPage.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import AdminLayout from '../../layouts/AdminLayout'; // Adjust path as needed
 import apiClient from '../../services/api';     // Adjust path as needed
 import { format } from 'date-fns';
-import { UserCheck, Bell, Shield, AlertCircle, Activity, Search, Info } from 'lucide-react';
+import { UserCheck, Bell, Shield, AlertCircle, Activity, Search } from 'lucide-react';
 
 // Matches the structure from ActivityLogResource
 interface ActivityLogEntry {

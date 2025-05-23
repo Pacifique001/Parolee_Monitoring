@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/ForgotPasswordPage.tsx
-import React, { useState, FormEvent } from 'react';
+import React, { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import apiClient from '../services/api';
 import { Mail, ArrowLeft } from 'lucide-react';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 
 export default function LandingPage() {
@@ -380,7 +379,7 @@ export default function LandingPage() {
                                 <ul className="space-y-2 text-sm">
                                     <li>
                                         <Link
-                                            href="#home"
+                                            to="#home"
                                             className="transition-colors hover:text-white"
                                         >
                                             Home
@@ -388,7 +387,7 @@ export default function LandingPage() {
                                     </li>
                                     <li>
                                         <Link
-                                            href="#about"
+                                            to="#about"
                                             className="transition-colors hover:text-white"
                                         >
                                             About Us
@@ -396,7 +395,7 @@ export default function LandingPage() {
                                     </li>
                                     <li>
                                         <Link
-                                            href="#contact"
+                                            to="#contact"
                                             className="transition-colors hover:text-white"
                                         >
                                             Contact Us
@@ -411,7 +410,7 @@ export default function LandingPage() {
                                 <ul className="space-y-2 text-sm">
                                     <li>
                                         <Link
-                                            href="/privacy-policy"
+                                            to="/privacy-policy"
                                             className="transition-colors hover:text-white"
                                         >
                                             Privacy Policy
@@ -419,7 +418,7 @@ export default function LandingPage() {
                                     </li>
                                     <li>
                                         <Link
-                                            href="/terms"
+                                            to="/terms"
                                             className="transition-colors hover:text-white"
                                         >
                                             Terms and Services
@@ -427,7 +426,7 @@ export default function LandingPage() {
                                     </li>
                                     <li>
                                         <Link
-                                            href="/cookies"
+                                            to="/cookies"
                                             className="transition-colors hover:text-white"
                                         >
                                             Cookies Policy

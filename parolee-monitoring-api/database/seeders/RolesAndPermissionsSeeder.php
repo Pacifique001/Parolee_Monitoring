@@ -15,136 +15,133 @@ class RolesAndPermissionsSeeder extends Seeder
      */
     public function run(): void
     {
-        // Reset cached roles and permissions
+        // Reset cached roles and permissions at the beginning of the seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Define Permissions based on your wireframe features
+        $guard = 'web'; // Define default guard name
 
-        // General Admin Access
-        Permission::firstOrCreate(['name' => 'access admin panel', 'guard_name' => 'web']); // Basic gatekeeper
+        // --- Define ALL Permissions ---
 
-        // Dashboard
-        Permission::firstOrCreate(['name' => 'view dashboard', 'guard_name' => 'web']);
+        // Portal Access Permissions
+        Permission::firstOrCreate(['name' => 'access admin portal', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'access officer portal', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'access staff portal', 'guard_name' => $guard]);
+
+        // Dashboard View Permissions
+        Permission::firstOrCreate(['name' => 'view admin dashboard', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'view officer dashboard', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'view staff dashboard', 'guard_name' => $guard]);
 
         // User Management Permissions
-        Permission::firstOrCreate(['name' => 'manage users', 'guard_name' => 'web']); // Super permission
-        Permission::firstOrCreate(['name' => 'view users', 'guard_name' => 'web']);
-        Permission::firstOrCreate(['name' => 'create users', 'guard_name' => 'web']);
-        Permission::firstOrCreate(['name' => 'edit users', 'guard_name' => 'web']);    // Includes basic info + status
-        Permission::firstOrCreate(['name' => 'delete users', 'guard_name' => 'web']);
-        Permission::firstOrCreate(['name' => 'assign roles', 'guard_name' => 'web']);
-        Permission::firstOrCreate(['name' => 'view profiles', 'guard_name' => 'web']); // General view permission
-        Permission::firstOrCreate(['name' => 'edit profiles', 'guard_name' => 'web']); // General edit permission (or make specific: edit parolee profile, etc.)
+        Permission::firstOrCreate(['name' => 'manage users', 'guard_name' => $guard]); // Super permission for User CRUD
+        Permission::firstOrCreate(['name' => 'view users', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'create users', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'edit users', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'delete users', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'assign roles to users', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'assign direct permissions to users', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'view user profiles', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'edit user profiles', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'activate users', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'deactivate users', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'reset user passwords', 'guard_name' => $guard]);
 
-        // AI Insights Permissions
-        Permission::firstOrCreate(['name' => 'view ai insights', 'guard_name' => 'web']);
+        // Global Role & Permission Model Management
+        Permission::firstOrCreate(['name' => 'manage roles', 'guard_name' => $guard]); // CRUD for Role model
+        Permission::firstOrCreate(['name' => 'manage permissions', 'guard_name' => $guard]); // CRUD for Permission model
+        Permission::firstOrCreate(['name' => 'assign permissions to roles', 'guard_name' => $guard]);
 
-        // IoT Monitoring Permissions
-        Permission::firstOrCreate(['name' => 'view iot data', 'guard_name' => 'web']);
-        Permission::firstOrCreate(['name' => 'manage iot alerts', 'guard_name' => 'web']); 
-        Permission::firstOrCreate(['name' => 'manage iot devices', 'guard_name' => 'web']);
-        // GPS Tracking Permissions
-        Permission::firstOrCreate(['name' => 'view gps tracking', 'guard_name' => 'web']);
-        Permission::firstOrCreate(['name' => 'manage geo-fences', 'guard_name' => 'web']); // Create/Edit/Delete fences
-        Permission::firstOrCreate(['name' => 'view geo-fence alerts', 'guard_name' => 'web']);
+        // AI Insights
+        Permission::firstOrCreate(['name' => 'view ai insights', 'guard_name' => $guard]);
 
-        // System Logs Permissions
-        Permission::firstOrCreate(['name' => 'view system logs', 'guard_name' => 'web']);
+        // IoT Management & Monitoring
+        Permission::firstOrCreate(['name' => 'manage iot devices', 'guard_name' => $guard]); // <-- NEWLY ADDED
+        Permission::firstOrCreate(['name' => 'view iot data', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'manage iot alerts', 'guard_name' => $guard]);
 
-        // Settings Permissions
-        Permission::firstOrCreate(['name' => 'manage settings', 'guard_name' => 'web']); // Super permission for settings section
-        Permission::firstOrCreate(['name' => 'manage roles and permissions', 'guard_name' => 'web']); // More specific
+        // GPS Tracking & Geo-fencing
+        Permission::firstOrCreate(['name' => 'view gps tracking', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'manage geofences', 'guard_name' => $guard]); // <-- ALREADY HAD, CONFIRMED
+        Permission::firstOrCreate(['name' => 'assign geofences to parolees', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'view geofence alerts', 'guard_name' => $guard]);
 
-        // Define Roles and Assign Permissions
+        // System Logs
+        Permission::firstOrCreate(['name' => 'view system logs', 'guard_name' => $guard]);
 
-        // ROLE: System Administrator (Typically user_type: 'admin')
-        $adminRole = Role::firstOrCreate(['name' => 'System Administrator', 'guard_name' => 'web']);
-        // Admins get all permissions (simplest way)
-        $adminRole->givePermissionTo(Permission::all());
-        // Or assign specific super-permissions if you prefer more control later:
-        // $adminRole->givePermissionTo([
-        //     'access admin panel',
-        //     'view dashboard',
-        //     'manage users', // Implies view, create, edit, delete, assign roles, view/edit profiles
-        //     'view ai insights',
-        //     'view iot data',
-        //     'manage iot alerts',
-        //     'view gps tracking',
-        //     'manage geo-fences',
-        //     'view geo-fence alerts',
-        //     'view system logs',
-        //     'manage settings', // Implies manage roles/permissions
-        //     'manage roles and permissions'
-        // ]);
+        // System Settings
+        Permission::firstOrCreate(['name' => 'manage system settings', 'guard_name' => $guard]);
 
-        // ROLE: Parole Officer (Typically user_type: 'officer')
-        $officerRole = Role::firstOrCreate(['name' => 'Parole Officer', 'guard_name' => 'web']);
-        $officerRole->givePermissionTo([
-            'access admin panel',
-            'view dashboard',
-            'view users',           // Can see users (perhaps scoped later to their parolees)
-            'view profiles',        // Can view details (scoped later)
-            'edit profiles',        // Can edit *some* profile info (scoped later)
-            'view iot data',        // View data for assigned parolees
-            'view gps tracking',    // View tracking for assigned parolees
-            'view geo-fence alerts',// View alerts for assigned parolees
-            'view ai insights',     // View risk assessments, etc. for assigned parolees
+        // Staff Specific - Assessments
+        Permission::firstOrCreate(['name' => 'manage assessments', 'guard_name' => $guard]); // <-- NEWLY ADDED
+        Permission::firstOrCreate(['name' => 'view assessments', 'guard_name' => $guard]);
+
+        // Staff Specific - Messages & Notifications
+        Permission::firstOrCreate(['name' => 'manage staff messages', 'guard_name' => $guard]); // <-- NEWLY ADDED
+        Permission::firstOrCreate(['name' => 'view staff notifications', 'guard_name' => $guard]); // <-- NEWLY ADDED
+
+        // Officer Specific
+        Permission::firstOrCreate(['name' => 'view officer assigned parolees', 'guard_name' => $guard]); // <-- NEWLY ADDED
+        Permission::firstOrCreate(['name' => 'manage officer communications', 'guard_name' => $guard]); // <-- NEWLY ADDED
+       
+        
+        
+        
+
+
+        
+
+        // ROLE: System Administrator
+        $adminRole = Role::firstOrCreate(['name' => 'System Administrator', 'guard_name' => $guard]);
+        // Give all defined permissions to the System Administrator
+        // This line MUST come AFTER all Permission::firstOrCreate calls
+        $adminRole->syncPermissions(Permission::all());
+
+        // ROLE: Parole Officer
+        $officerRole = Role::firstOrCreate(['name' => 'Parole Officer', 'guard_name' => $guard]);
+        $officerRole->syncPermissions([
+            'access officer portal',
+            'view officer dashboard',
+            'view officer assigned parolees',
+            'view user profiles', // Scoped by policies in controller for their parolees
+            'edit user profiles', // Scoped by policies
+            'view iot data',      // Scoped
+            'view gps tracking',  // Scoped
+            'view geofence alerts', // Scoped
+            'view ai insights',     // Scoped
+            'manage officer communications',
+            // Officers might also view assessments related to their parolees, but not manage them
+            'view assessments',
         ]);
 
-        // ROLE: Case Manager (Typically user_type: 'staff') - Focused on rehabilitation aspects
-        $staffRole = Role::firstOrCreate(['name' => 'Case Manager', 'guard_name' => 'web']);
-        $staffRole->givePermissionTo([
-            'access admin panel',
-            'view dashboard',
-            'view users',           // View assigned parolees
-            'view profiles',        // View assigned parolee profiles
-            'edit profiles',        // Add notes, update contact info for assigned parolees
-            'view ai insights',     // View relevant insights for assigned parolees
+        // ROLE: Case Manager (Primary Staff Role)
+        $caseManagerRole = Role::firstOrCreate(['name' => 'Case Manager', 'guard_name' => $guard]);
+        $caseManagerRole->syncPermissions([
+            'access staff portal',
+            'view staff dashboard',
+            'view users', // To find parolees for assessments
+            'view user profiles', // For assessment context
+            'edit user profiles', // Maybe limited editing rights
+            'manage assessments', // Can create, update, delete assessments
+            'view assessments',
+            'view ai insights', // Relevant to parolee progress
+            'manage staff messages',
+            'view staff notifications',
+            'manage users',
         ]);
 
-        // ROLE: Support Staff (Optional - less privileged staff user_type: 'staff')
-        $supportStaffRole = Role::firstOrCreate(['name' => 'Support Staff', 'guard_name' => 'web']);
-         $supportStaffRole->givePermissionTo([
-            'access admin panel',
-            // Perhaps only view basic user directory or specific limited functions
-            // 'view users', // Maybe? Depends on requirements
-         ]);
+        // ROLE: Support Staff (Less privileged staff)
+        $supportStaffRole = Role::firstOrCreate(['name' => 'Support Staff', 'guard_name' => $guard]);
+        $supportStaffRole->syncPermissions([
+            'access staff portal',
+            'view staff dashboard',
+            'view users', // Potentially view only, limited fields
+            'view user profiles', // Limited view
+            'view assessments', // Can view but not create/edit
+            'view staff notifications',
+            // No message management for basic support staff perhaps
+        ]);
 
-
-        // ROLE: Parolee (user_type: 'parolee')
-        // Parolees generally DO NOT get roles/permissions within the *Admin Portal*.
-        // If they have a separate login portal later, they'd have roles/permissions there.
-        // We create the role here mainly for identification purposes if needed, but assign no permissions for the admin panel.
-        Role::firstOrCreate(['name' => 'Parolee', 'guard_name' => 'web']);
-
-        // You can create more roles as needed (e.g., 'Supervising Officer', 'Data Analyst')
-        // Example:
-        // $supervisorRole = Role::firstOrCreate(['name' => 'Supervising Officer', 'guard_name' => 'web']);
-        // $supervisorRole->givePermissionTo($officerRole->permissions); // Inherit officer permissions
-        // $supervisorRole->givePermissionTo([
-        //      'manage geo-fences',
-        //      'view system logs', // Perhaps wider scope than regular officer
-        //      // Add permissions to assign cases, view reports for their team, etc.
-        // ]);
-
-
-        // --- Assign Roles to Initial Users (Example - Typically in UserSeeder) ---
-        // This part is better placed in your DatabaseSeeder or a dedicated UserSeeder
-        // after the RolesAndPermissionsSeeder runs. But showing the concept here:
-
-        // $adminUser = \App\Models\User::where('email', 'admin@example.com')->first();
-        // if ($adminUser) {
-        //     $adminUser->assignRole('System Administrator');
-        // }
-
-        // $officerUser = \App\Models\User::where('email', 'officer@example.com')->first();
-        // if ($officerUser) {
-        //     $officerUser->assignRole('Parole Officer');
-        // }
-
-        // $staffUser = \App\Models\User::where('email', 'staff@example.com')->first();
-        // if ($staffUser) {
-        //     $staffUser->assignRole('Case Manager');
-        // }
+        // ROLE: Parolee
+        Role::firstOrCreate(['name' => 'Parolee', 'guard_name' => $guard]); // No portal permissions by default
     }
 }
