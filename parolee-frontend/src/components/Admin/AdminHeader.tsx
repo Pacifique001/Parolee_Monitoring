@@ -1,12 +1,16 @@
 // src/components/Admin/AdminHeader.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState} from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Bell, UserCircle, ChevronDown, Menu, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
+import type { UserPermissions } from '../../types/api';
 
 interface AdminHeaderProps {
     onToggleSidebar: () => void;
+    userPermissions: UserPermissions;
+    isSidebarOpen: boolean;
+    
 }
 
 const AdminHeader: React.FC<AdminHeaderProps> = ({ onToggleSidebar }) => {

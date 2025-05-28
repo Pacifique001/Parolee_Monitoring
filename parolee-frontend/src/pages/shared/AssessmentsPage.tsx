@@ -258,7 +258,7 @@ const AssessmentsPage: React.FC = () => {
 
             // Fetch parolees for the dropdown if not already fetched
             if(availableParolees.length === 0) {
-                const paroleesResponse = await apiClient.get<{data: {id: number, name: string}[]}>('/staff/users?user_type=parolee&per_page=1000'); // Fetch all parolees
+                const paroleesResponse = await apiClient.get<{data: {id: number, name: string}[]}>('/admin/users?user_type=parolee&per_page=1000'); // Fetch all parolees
                 setAvailableParolees(paroleesResponse.data.data.map(p => ({id: p.id, name: p.name})));
             }
 

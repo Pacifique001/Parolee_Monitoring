@@ -1,33 +1,56 @@
-// src/layouts/OfficerLayout.tsx
-import React, { useState, type ReactNode } from 'react';
-import OfficerSidebar from '../components/Officer/OfficerSidebar'; // Create this
-import OfficerHeader from '../components/Officer/OfficerHeader';   // Create this
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, type ReactNode, useEffect } from 'react';
+// import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
+import OfficerHeader from '../components/Officer/OfficerHeader';
+import AccessDeniedView from '../components/shared/AccessDeniedView'; // Corrected import
+import DynamicSidebar from '../components/shared/DynamicSidebar';
 
-interface OfficerLayoutProps { children: ReactNode; }
+interface OfficerLayoutProps {
+    children: ReactNode;
+}
 
 const OfficerLayout: React.FC<OfficerLayoutProps> = ({ children }) => {
+    // const { user } = useAuth();
+    const { permissions: structuredPermissions } = usePermissions();
+
     const [sidebarOpen, setSidebarOpen] = useState(() => {
         const saved = localStorage.getItem('officerSidebarOpen');
         return saved !== null ? JSON.parse(saved) : true;
     });
 
-    React.useEffect(() => {
+    useEffect(() => {
         localStorage.setItem('officerSidebarOpen', JSON.stringify(sidebarOpen));
     }, [sidebarOpen]);
 
+    if (!structuredPermissions.portal_access.officer) {
+        return <AccessDeniedView portalName="Officer Portal" />;
+    }
+
+    const handleToggleSidebar = () => {
+        setSidebarOpen(prev => !prev);
+    };
+
     return (
-        <div className="min-h-screen flex bg-gray-100 dark:bg-gray-900">
-            <OfficerSidebar isOpen={sidebarOpen} />
-            <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? 'ml-60' : 'ml-20'}`}> {/* Adjusted ml for w-60 */}
-                <OfficerHeader
-                    onToggleSidebar={() => setSidebarOpen(prev => !prev)}
-                    isSidebarOpen={sidebarOpen}
-                />
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 mt-16">
+        <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-brand-gray-officer-bg">
+            <OfficerHeader 
+                onToggleSidebar={handleToggleSidebar}
+                isSidebarOpen={sidebarOpen}
+                userPermissions={structuredPermissions}
+            />
+            <div className="flex flex-1 pt-16">
+                <div className={`fixed top-16 bottom-0 left-0 transition-all duration-300 ease-in-out z-30 ${
+                    sidebarOpen ? 'w-64' : 'w-20'
+                }`}>
+                    <DynamicSidebar isOpen={sidebarOpen} />
+                </div>
+                <main className="flex-1 overflow-y-auto">
+                    {/* The children (e.g., DashboardPage) will have their own padding (like p-6 mt-16) */}
                     {children}
                 </main>
             </div>
         </div>
     );
 };
+
 export default OfficerLayout;

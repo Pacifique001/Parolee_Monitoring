@@ -127,7 +127,7 @@ const MessagesPage: React.FC = () => {
             if (userTypeFilter !== 'all') params.append('user_type', userTypeFilter);
             params.append('per_page', '20'); // Limit for modal display
 
-            const response = await apiClient.get<{ data: SelectableUser[] }>(`/staff/messageable-users?${params.toString()}`);
+            const response = await apiClient.get<{ data: SelectableUser[] }>(`staff/messages/messageable-users?${params.toString()}`);
             setSelectableUsers(response.data.data || []);
         } catch (error) {
             console.error('Failed to fetch users for messaging:', error);
@@ -144,7 +144,7 @@ const MessagesPage: React.FC = () => {
 
         try {
             setIsStartingConversation(true);
-            const response = await apiClient.post<{ data: Conversation }>('/staff/messages/threads', {
+            const response = await apiClient.post<{ data: Conversation }>('staff/messages/threads', {
                 recipient_user_id: selectedRecipient.id,
                 initial_message_content: initialMessage.trim()
             });

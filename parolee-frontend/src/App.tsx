@@ -1,38 +1,98 @@
 // src/App.tsx
-import { type JSX } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-// General Pages
+import { useEffect, type JSX } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import AuthProvider, { useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import ErrorBoundary from './components/shared/ErrorBoundary';
+
+// Layouts
+import AdminLayout from './layouts/AdminLayout';
+import OfficerLayout from './layouts/OfficerLayout';
+import StaffLayout from './layouts/StaffLayout';
+import SharedLayout from './layouts/SharedLayout';
+
+// Auth & General Pages
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage'; // If using traditional token reset links
-import ResetPasswordOtpPage from './pages/ResetPasswordOtpPage'; // For OTP flow
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import ResetPasswordOtpPage from './pages/ResetPasswordOtpPage';
 
-// Admin Portal Components
-import AdminLayout from './layouts/AdminLayout';
+// Role-Specific Dashboards
 import AdminDashboardPage from './pages/admin/DashboardPage';
-import UserManagementPage from './pages/admin/UserManagementPage';
-import SystemLogsPage from './pages/admin/SystemLogsPage';
-
-// Officer Portal Components
-import OfficerLayout from './layouts/OfficerLayout';
 import OfficerDashboardPage from './pages/officer/DashboardPage';
-
-// Staff Portal Components
-import StaffLayout from './layouts/StaffLayout';
 import StaffDashboardPage from './pages/staff/DashboardPage';
-import StaffAssessmentsPage from './pages/staff/AssessmentsPage';
-import StaffMessagesPage from './pages/staff/MessagesPage';
-import StaffNotificationsPage from './pages/staff/NotificationsPage';
 
-// Import NotificationProvider
-import { NotificationProvider } from './contexts/NotificationContext';
+// Shared Pages
+import UserManagementPage from './pages/shared/UserManagementPage';
+import SystemLogsPage from './pages/shared/SystemLogsPage';
+import AssessmentsPage from './pages/shared/AssessmentsPage';
+import MessagesPage from './pages/shared/MessagesPage';
+import NotificationsPage from './pages/shared/NotificationsPage';
+import AiInsightsPage from './pages/shared/AiInsightsPage';
+import IotMonitoringPage from './pages/shared/IotMonitoringPage';
+import GpsTrackingPage from './pages/shared/GpsTrackingPage';
+import NotFoundPage from './pages/shared/NotFoundPage';
 
-// Helper component for protected routes
-const ProtectedRoute = ({ allowedRoles, children }: { allowedRoles: string[]; children: JSX.Element }) => {
-    const { isAuthenticated, user, isLoading } = useAuth();
+interface ProtectedRouteProps {
+    allowedRoles?: string[];
+    requiredPermissions?: string[];
+    children: JSX.Element;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+    allowedRoles = [],
+    requiredPermissions = [],
+    children
+}) => {
+    const { isAuthenticated, user, isLoading, hasRole, hasPermission } = useAuth();
     const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (isLoading) return;
+
+        // Add debug logging
+        console.group('Protected Route Check');
+        console.log('Path:', location.pathname);
+        console.log('User:', user);
+        console.log('Required Roles:', allowedRoles);
+        console.log('Required Permissions:', requiredPermissions);
+        
+        if (!isAuthenticated) {
+            console.log('Not authenticated, redirecting to login');
+            console.groupEnd();
+            navigate('/login', { state: { from: location }, replace: true });
+            return;
+        }
+
+        const hasRequiredRole = allowedRoles.length === 0 || 
+            allowedRoles.some(roleName => {
+                const roleMatch = hasRole(roleName);
+                console.log(`Role Check - ${roleName}:`, roleMatch);
+                return roleMatch;
+            });
+
+        const hasRequiredPerms = requiredPermissions.length === 0 || 
+            requiredPermissions.every(pName => {
+                const hasPerm = hasPermission(pName);
+                console.log(`Permission Check - ${pName}:`, hasPerm);
+                return hasPerm;
+            });
+
+        if (!hasRequiredRole || !hasRequiredPerms) {
+            console.warn(
+                `Access Denied: User ${user?.email} lacks required ` +
+                `${!hasRequiredRole ? 'roles' : 'permissions'} for ${location.pathname}`
+            );
+            console.groupEnd();
+            navigate('/', { replace: true });
+        }
+        console.groupEnd();
+    }, [
+        isAuthenticated, isLoading, user, allowedRoles, requiredPermissions,
+        location, navigate, hasRole, hasPermission
+    ]);
 
     if (isLoading) {
         return (
@@ -42,43 +102,37 @@ const ProtectedRoute = ({ allowedRoles, children }: { allowedRoles: string[]; ch
         );
     }
 
-    if (!isAuthenticated) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
-    }
-
-    const userHasRequiredRole = user?.roles?.some(role => allowedRoles.includes(role.name));
-
-    if (!userHasRequiredRole) {
-        console.warn(`Access Denied: User ${user?.email} not authorized for roles: ${allowedRoles.join(', ')}.`);
-        return <Navigate to="/" replace />;
-    }
+    if (!isAuthenticated) return null;
 
     return children;
 };
 
-// Component to determine initial redirect after login or if already logged in
 const AuthenticatedRedirect = () => {
     const { user, hasRole } = useAuth();
 
-    if (user?.user_type === 'admin' && hasRole('System Administrator')) {
+    if (hasRole('System Administrator')) {
         return <Navigate to="/admin/dashboard" replace />;
-    } else if (user?.user_type === 'officer' && hasRole('Parole Officer')) {
+    }
+    if (hasRole('Parole Officer')) {
         return <Navigate to="/officer/dashboard" replace />;
-    } else if (user?.user_type === 'staff' && (hasRole('Case Manager') || hasRole('Support Staff'))) {
+    }
+    if (hasRole('Case Manager') || hasRole('Support Staff')) {
         return <Navigate to="/staff/dashboard" replace />;
     }
-
-    console.warn("Authenticated user without a designated portal role. Redirecting to landing.");
+    // Fallback if user is authenticated but doesn't match known roles with dashboards
+    console.warn("Authenticated user with no specific dashboard redirect:", user?.email, user?.roles);
     return <Navigate to="/" replace />;
 };
 
 function App() {
     return (
-        <AuthProvider>
-            <NotificationProvider>
-                <RouterSetup />
-            </NotificationProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+            <AuthProvider>
+                <NotificationProvider>
+                    <RouterSetup />
+                </NotificationProvider>
+            </AuthProvider>
+        </ErrorBoundary>
     );
 }
 
@@ -97,61 +151,305 @@ function RouterSetup() {
     return (
         <BrowserRouter>
             <Routes>
-                {/* Public Routes - Landing page is always accessible */}
+                {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
-                
-                {/* Auth Routes - Redirect to dashboard if authenticated */}
                 <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <AuthenticatedRedirect />} />
                 <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPasswordPage /> : <AuthenticatedRedirect />} />
                 <Route path="/reset-password-otp" element={!isAuthenticated ? <ResetPasswordOtpPage /> : <AuthenticatedRedirect />} />
                 <Route path="/reset-password" element={!isAuthenticated ? <ResetPasswordPage /> : <AuthenticatedRedirect />} />
 
-                {/* Protected Routes - Only accessible when authenticated */}
-                <Route path="/admin/*" element={
-                    <ProtectedRoute allowedRoles={['System Administrator']}>
-                        <AdminLayout>
-                            <Routes>
-                                <Route index element={<Navigate to="dashboard" replace />} />
-                                <Route path="dashboard" element={<AdminDashboardPage />} />
-                                <Route path="user-management" element={<UserManagementPage />} />
-                                <Route path="system-logs" element={<SystemLogsPage />} />
-                                <Route path="*" element={<Navigate to="dashboard" replace />} />
-                            </Routes>
-                        </AdminLayout>
+                {/* Admin Portal */}
+                <Route path="/admin" element={
+                    <ProtectedRoute 
+                        allowedRoles={['System Administrator']} 
+                        requiredPermissions={['access admin portal']}
+                    >
+                        <AdminLayout><Outlet /></AdminLayout>
                     </ProtectedRoute>
-                } />
+                }>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    
+                    <Route path="dashboard" element={
+                        <ProtectedRoute requiredPermissions={['view admin dashboard']}>
+                            <AdminDashboardPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    {/* Admin Shared Pages Routes */}
+                    <Route path="user-management" element={
+                        <ProtectedRoute requiredPermissions={['view users', 'manage users']}>
+                            <UserManagementPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="system-logs" element={
+                        <ProtectedRoute requiredPermissions={['view system logs']}>
+                            <SystemLogsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="ai-insights" element={
+                        <ProtectedRoute requiredPermissions={['view ai insights']}>
+                            <AiInsightsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="iot-monitoring" element={
+                        <ProtectedRoute requiredPermissions={['view iot data']}>
+                            <IotMonitoringPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="gps-tracking" element={
+                        <ProtectedRoute requiredPermissions={['view gps tracking']}>
+                            <GpsTrackingPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="assessments" element={
+                        <ProtectedRoute requiredPermissions={['view assessments']}>
+                            <AssessmentsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="messages" element={
+                        <ProtectedRoute requiredPermissions={['manage staff messages']}>
+                            <MessagesPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="notifications" element={
+                        <ProtectedRoute requiredPermissions={['view staff notifications']}>
+                            <NotificationsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="*" element={<Navigate to="dashboard" replace />} />
+                </Route>
 
                 {/* Officer Portal */}
-                <Route path="/officer/*" element={
-                    <ProtectedRoute allowedRoles={['Parole Officer']}>
-                        <OfficerLayout>
-                            <Routes>
-                                <Route index element={<Navigate to="dashboard" replace />} />
-                                <Route path="dashboard" element={<OfficerDashboardPage />} />
-                                <Route path="*" element={<Navigate to="dashboard" replace />} />
-                            </Routes>
-                        </OfficerLayout>
+                <Route path="/officer" element={
+                    <ProtectedRoute 
+                        allowedRoles={['Parole Officer']} 
+                        requiredPermissions={['access officer portal']}
+                    >
+                        <OfficerLayout><Outlet /></OfficerLayout>
                     </ProtectedRoute>
-                } />
+                }>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    
+                    <Route path="dashboard" element={
+                        <ProtectedRoute requiredPermissions={['view officer dashboard']}>
+                            <OfficerDashboardPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    {/* Officer Shared Pages Routes */}
+                    <Route path="gps-tracking" element={
+                        <ProtectedRoute requiredPermissions={['view gps tracking']}>
+                            <GpsTrackingPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="iot-monitoring" element={
+                        <ProtectedRoute requiredPermissions={['view iot data']}>
+                            <IotMonitoringPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="ai-insights" element={
+                        <ProtectedRoute requiredPermissions={['view ai insights']}>
+                            <AiInsightsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="assessments" element={
+                        <ProtectedRoute requiredPermissions={['view assessments']}>
+                            <AssessmentsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="messages" element={
+                        <ProtectedRoute requiredPermissions={['manage staff messages']}>
+                            <MessagesPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="notifications" element={
+                        <ProtectedRoute requiredPermissions={['view staff notifications']}>
+                            <NotificationsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="system-logs" element={
+                        <ProtectedRoute requiredPermissions={['view system logs']}>
+                            <SystemLogsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="user-management" element={
+                        <ProtectedRoute requiredPermissions={['view users']}>
+                            <UserManagementPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="*" element={<Navigate to="dashboard" replace />} />
+                </Route>
 
                 {/* Staff Portal */}
-                <Route path="/staff/*" element={
-                    <ProtectedRoute allowedRoles={['Case Manager', 'Support Staff']}>
-                        <StaffLayout>
-                            <Routes>
-                                <Route index element={<Navigate to="dashboard" replace />} />
-                                <Route path="dashboard" element={<StaffDashboardPage />} />
-                                <Route path="assessments" element={<StaffAssessmentsPage />} />
-                                <Route path="messages" element={<StaffMessagesPage />} />
-                                <Route path="notifications" element={<StaffNotificationsPage />} />
-                                <Route path="*" element={<Navigate to="dashboard" replace />} />
-                            </Routes>
-                        </StaffLayout>
+                <Route path="/staff" element={
+                    <ProtectedRoute 
+                        allowedRoles={['Case Manager', 'Support Staff']} 
+                        requiredPermissions={['access staff portal']}
+                    >
+                        <StaffLayout><Outlet /></StaffLayout>
+                    </ProtectedRoute>
+                }>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    
+                    <Route path="dashboard" element={
+                        <ProtectedRoute requiredPermissions={['view staff dashboard']}>
+                            <StaffDashboardPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    {/* Staff Shared Pages Routes */}
+                    <Route path="assessments" element={
+                        <ProtectedRoute requiredPermissions={['view assessments']}>
+                            <AssessmentsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="messages" element={
+                        <ProtectedRoute requiredPermissions={['manage staff messages']}>
+                            <MessagesPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="notifications" element={
+                        <ProtectedRoute requiredPermissions={['view staff notifications']}>
+                            <NotificationsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="ai-insights" element={
+                        <ProtectedRoute requiredPermissions={['view ai insights']}>
+                            <AiInsightsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="iot-monitoring" element={
+                        <ProtectedRoute requiredPermissions={['view iot data']}>
+                            <IotMonitoringPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="gps-tracking" element={
+                        <ProtectedRoute requiredPermissions={['view gps tracking']}>
+                            <GpsTrackingPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="system-logs" element={
+                        <ProtectedRoute requiredPermissions={['view system logs']}>
+                            <SystemLogsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="user-management" element={
+                        <ProtectedRoute requiredPermissions={['view users']}>
+                            <UserManagementPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="*" element={<Navigate to="dashboard" replace />} />
+                </Route>
+
+                {/* Shared Routes (Optional - for direct access if needed) */}
+                <Route path="/shared" element={
+                    <ProtectedRoute requiredPermissions={['access portal']}>
+                        <SharedLayout />
+                    </ProtectedRoute>
+                }>
+                    <Route path="user-management" element={
+                        <ProtectedRoute requiredPermissions={['view users']}>
+                            <UserManagementPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="ai-insights" element={
+                        <ProtectedRoute requiredPermissions={['view ai insights']}>
+                            <AiInsightsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="iot-monitoring" element={
+                        <ProtectedRoute requiredPermissions={['view iot data']}>
+                            <IotMonitoringPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="gps-tracking" element={
+                        <ProtectedRoute requiredPermissions={['view gps tracking']}>
+                            <GpsTrackingPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="assessments" element={
+                        <ProtectedRoute requiredPermissions={['view assessments']}>
+                            <AssessmentsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="messages" element={
+                        <ProtectedRoute requiredPermissions={['manage staff messages']}>
+                            <MessagesPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="notifications" element={
+                        <ProtectedRoute requiredPermissions={['view staff notifications']}>
+                            <NotificationsPage />
+                        </ProtectedRoute>
+                    } />
+                    
+                    <Route path="system-logs" element={
+                        <ProtectedRoute requiredPermissions={['view system logs']}>
+                            <SystemLogsPage />
+                        </ProtectedRoute>
+                    } />
+                </Route>
+
+                {/* Portal-specific fallbacks */}
+                <Route path="/admin/*" element={
+                    <ProtectedRoute 
+                        allowedRoles={['System Administrator']} 
+                        requiredPermissions={['access admin portal']}
+                    >
+                        <NotFoundPage />
                     </ProtectedRoute>
                 } />
 
-                {/* Change the fallback route to always go to landing page */}
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="/officer/*" element={
+                    <ProtectedRoute 
+                        allowedRoles={['Parole Officer']} 
+                        requiredPermissions={['access officer portal']}
+                    >
+                        <NotFoundPage />
+                    </ProtectedRoute>
+                } />
+
+                <Route path="/staff/*" element={
+                    <ProtectedRoute 
+                        allowedRoles={['Case Manager', 'Support Staff']} 
+                        requiredPermissions={['access staff portal']}
+                    >
+                        <NotFoundPage />
+                    </ProtectedRoute>
+                } />
+
+                {/* Global fallback */}
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </BrowserRouter>
     );

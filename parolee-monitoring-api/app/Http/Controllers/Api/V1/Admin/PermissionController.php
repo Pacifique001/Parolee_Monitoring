@@ -26,7 +26,7 @@ class PermissionController extends Controller
                 $query->where('guard_name', $guardName);
             })
             ->orderBy('name') // It's good to sort permissions by name
-            ->paginate($request->input('per_page', 25)); // Default 25 per page, can be overridden
+            ->get();// Default 25 per page, can be overridden
 
         return PermissionResource::collection($permissions)->response();
     }

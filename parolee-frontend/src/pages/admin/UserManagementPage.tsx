@@ -8,6 +8,7 @@ import UserForm from '../../components/UserManagement/UserForm'; // Assuming thi
 import DeleteConfirmationModal from '../../components/UserManagement/DeleteConfirmationModal';
 import StatusBadge from '../../components/UserManagement/StatusBadge';
 import { format } from 'date-fns';
+import { usePermissions } from '../../hooks/usePermissions';
 
 import {
     Users, UserPlus, Edit, Trash2, Search, Info, KeyRound,
@@ -39,6 +40,15 @@ const UserManagementPage: React.FC = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedItem, setSelectedItem] = useState<ApiUser | null>(null);
+
+    const { permissions } = usePermissions();
+
+    // Add permission checks
+    const canCreateUser = permissions.users.create;
+    const canEditUser = permissions.users.edit;
+    const canDeleteUser = permissions.users.delete;
+    const canViewDetails = permissions.users.view;
+    const canManagePermissions = permissions.roleManagement.assignPermissions;
 
   // Fetch roles and permissions once when component mounts
 useEffect(() => {
@@ -163,16 +173,20 @@ useEffect(() => {
                         <p className="text-sm text-gray-600 dark:text-gray-400">Manage parolees, officers, and staff members</p>
                     </div>
                     <div className="flex space-x-3">
-                        <button className="secondary-button text-sm">
-                            <KeyRound size={16} className="mr-2" /> Manage Permissions
-                        </button> 
-                        <button
-                            onClick={() => setShowAddModal(true)}
-                            className="primary-button text-sm" // Use global button styles
-                        >
-                            <UserPlus size={16} className="mr-2" />
-                            Add New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1, -1)}
-                        </button>
+                        {canManagePermissions && (
+                            <button className="secondary-button text-sm">
+                                <KeyRound size={16} className="mr-2" /> Manage Permissions
+                            </button>
+                        )}
+                        {canCreateUser && (
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="primary-button text-sm"
+                            >
+                                <UserPlus size={16} className="mr-2" />
+                                Add New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1, -1)}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -225,10 +239,11 @@ useEffect(() => {
                                 <div
                                     key={user.id}
                                     onClick={() => {
-                                        console.log('Clicked user:', user);
-                                        setSelectedItem(user);
+                                        if (canViewDetails) {
+                                            setSelectedItem(user);
+                                        }
                                     }}
-                                    className={`p-4 border-b dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50
+                                    className={`p-4 border-b dark:border-gray-700 ${canViewDetails ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'cursor-not-allowed opacity-75'}
                                         ${selectedItem?.id === user.id ? 'bg-indigo-50 dark:bg-indigo-900/30 border-l-4 border-brand-purple-admin' : 'border-l-4 border-transparent'}`}
                                 >
                                     <div className="flex justify-between items-center">
@@ -262,10 +277,24 @@ useEffect(() => {
                                 <div className="flex justify-between items-center mb-4 pb-4 border-b dark:border-gray-700">
                                     <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">{selectedItem.name}</h2>
                                     <div className="flex space-x-2">
-                                        <button onClick={() => openEditModal(selectedItem)} className="icon-button text-blue-600 dark:text-blue-400" title="Edit User"><Edit size={18} /></button>
-                                        {selectedItem.id !== 1 && /* Basic check for primary admin */
-                                          <button onClick={() => openDeleteModal(selectedItem)} className="icon-button text-red-600 dark:text-red-400" title="Delete User"><Trash2 size={18} /></button>
-                                        }
+                                        {canEditUser && (
+                                            <button 
+                                                onClick={() => openEditModal(selectedItem)} 
+                                                className="icon-button text-blue-600 dark:text-blue-400" 
+                                                title="Edit User"
+                                            >
+                                                <Edit size={18} />
+                                            </button>
+                                        )}
+                                        {canDeleteUser && selectedItem.id !== 1 && (
+                                            <button 
+                                                onClick={() => openDeleteModal(selectedItem)} 
+                                                className="icon-button text-red-600 dark:text-red-400" 
+                                                title="Delete User"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 <dl className="space-y-4">
@@ -335,38 +364,49 @@ useEffect(() => {
                             <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 dark:text-gray-400">
                                 <Info className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                                 <p className="text-xl font-medium">Select a user</p>
-                                <p className="text-sm">Choose a user from the list to view their details.</p>
+                                <p className="text-sm">
+                                    {canViewDetails 
+                                        ? "Choose a user from the list to view their details."
+                                        : "You don't have permission to view user details."}
+                                </p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Modals */}
-                {showAddModal && (
+                {/* Modals with permission checks */}
+                {showAddModal && canCreateUser && (
                     <UserForm
                         formMode="add"
                         userTypeForForm={activeTab}
                         availableRoles={allRoles}
-                        availablePermissions={allPermissions} // If adding direct permissions on create
+                        availablePermissions={allPermissions}
+                        canManageRoles={permissions.roleManagement.manageRoles}
+                        canManagePermissions={permissions.roleManagement.managePermissions}
+                        canAssignRoles={permissions.roleManagement.assignRoles}
+                        canAssignPermissions={permissions.roleManagement.assignPermissions}
                         onSubmitSuccess={handleFormSubmitSuccess}
                         onClose={() => setShowAddModal(false)}
                     />
                 )}
-                {showEditModal && editingItem && (
+                {showEditModal && editingItem && canEditUser && (
                     <UserForm
                         formMode="edit"
                         userTypeForForm={editingItem.user_type as UserTypeTab}
                         initialData={editingItem}
                         availableRoles={allRoles}
                         availablePermissions={allPermissions}
-                        //userDirectPermissions={editingItem.all_permissions?.map(p => p.name)}
+                        canManageRoles={permissions.roleManagement.manageRoles}
+                        canManagePermissions={permissions.roleManagement.managePermissions}
+                        canAssignRoles={permissions.roleManagement.assignRoles}
+                        canAssignPermissions={permissions.roleManagement.assignPermissions}
                         onSubmitSuccess={handleFormSubmitSuccess}
                         onClose={() => { setShowEditModal(false); setEditingItem(null); }}
                     />
                 )}
-                {showDeleteModal && deletingItem && (
+                {showDeleteModal && deletingItem && canDeleteUser && (
                     <DeleteConfirmationModal
-                        isOpen={showDeleteModal} // Pass isOpen prop
+                        isOpen={showDeleteModal}
                         itemType={deletingItem.user_type}
                         itemName={deletingItem.name}
                         onConfirm={handleDeleteConfirm}

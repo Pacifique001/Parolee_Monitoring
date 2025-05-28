@@ -1,18 +1,19 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/admin/SystemLogsPage.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import AdminLayout from '../../layouts/AdminLayout'; // Adjust path as needed
 import apiClient from '../../services/api';     // Adjust path as needed
 import { format } from 'date-fns';
-import { UserCheck, Bell, Shield, AlertCircle, Activity, Search } from 'lucide-react';
+import { UserCheck, Bell, Shield, AlertCircle, Activity, Search, MapPin, Smartphone, Users } from 'lucide-react';
 
 // Matches the structure from ActivityLogResource
 interface ActivityLogEntry {
     id: number;
     timestamp: string;
-    type: string; // Derived from log_name or event in ActivityLogResource
+    type: string;
     user_identifier: string;
-    action: string; // description from Activity model
+    action: string;
     details: string | Record<string, any> | null;
     subject_details?: {
         type: string | null;
@@ -20,16 +21,21 @@ interface ActivityLogEntry {
         description: string | null;
     };
     ip_address?: string | null;
-    success?: boolean; // Added this from mockSystemLogs, ensure ActivityLogResource provides it
-    // Add other fields from ActivityLogResource if needed
+    success?: boolean;
+    category?: string; // Add category for better grouping
 }
 
-interface LogSummaryFromApi { // Matches keys from backend summary
+interface LogSummaryFromApi {
     login_events: number;
-    system_alerts_logged: number; // Key from backend for logged alerts
+    system_alerts: number;
     modifications: number;
     violations: number;
-    // Add other summary counts your API might provide
+    user_management: number;
+    geofence_operations: number;
+    iot_operations: number;
+    role_operations: number;
+    assessment_operations: number;
+    communication_events: number;
 }
 
 interface SystemLogsApiResponse {
@@ -50,28 +56,28 @@ interface SystemLogsApiResponse {
 const LogTypeDisplay: React.FC<{ type: string; action: string }> = ({ type, action }) => {
     let IconComponent = Activity;
     let colorClasses = 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-    let displayText = type.replace('_', ' '); // More generic display text
+    let displayText = type.replace('_', ' ');
 
-    // Mapping based on log_name or event (keys from ActivityLogResource 'type')
     const normalizedType = type.toLowerCase();
     const normalizedAction = action.toLowerCase();
 
-    if (normalizedType === 'authentications' || normalizedAction.includes('login') || normalizedAction.includes('logout')) {
-        IconComponent = UserCheck;
-        colorClasses = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-        displayText = 'Auth';
-    } else if (normalizedType === 'violations' || normalizedAction.includes('violation')) {
-        IconComponent = AlertCircle;
-        colorClasses = 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-        displayText = 'Violation';
-    } else if (normalizedType === 'modifications' || ['updated', 'created', 'deleted'].includes(normalizedType)) {
-        IconComponent = Shield;
-        colorClasses = 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-        displayText = 'Modification';
-    } else if (normalizedType.includes('alert')) { // For 'system_alerts_logged' or similar log_name
-        IconComponent = Bell;
-        colorClasses = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-        displayText = 'System Alert';
+    switch(true) {
+        case normalizedType.includes('auth') || normalizedAction.includes('login') || normalizedAction.includes('logout'):
+            IconComponent = UserCheck;
+            colorClasses = 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+            displayText = 'Authentication';
+            break;
+        case normalizedType.includes('geofence'):
+            IconComponent = MapPin;
+            colorClasses = 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+            displayText = 'Geofence';
+            break;
+        case normalizedType.includes('iot'):
+            IconComponent = Smartphone;
+            colorClasses = 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+            displayText = 'IoT Device';
+            break;
+        // Add more cases for other types
     }
 
     return (
@@ -82,6 +88,36 @@ const LogTypeDisplay: React.FC<{ type: string; action: string }> = ({ type, acti
     );
 };
 
+const LogDetailsDisplay: React.FC<{ details: ActivityLogEntry['details'] }> = ({ details }) => {
+    if (!details) return <span>N/A</span>;
+
+    if (typeof details === 'string') {
+        return <span>{details}</span>;
+    }
+
+    // For object details, create a more readable format
+    const formattedDetails = Object.entries(details).map(([key, value]) => {
+        const formattedValue = typeof value === 'object' ? JSON.stringify(value) : value;
+        return `${key}: ${formattedValue}`;
+    }).join(' | ');
+
+    return (
+        <div className="group relative">
+            <span className="cursor-help truncate max-w-xs inline-block">
+                {formattedDetails}
+            </span>
+            {/* Tooltip with full details */}
+            <div className="hidden group-hover:block absolute z-10 p-2 bg-gray-900 text-white text-xs rounded shadow-lg whitespace-pre-wrap max-w-lg left-0 top-full mt-1">
+                {Object.entries(details).map(([key, value]) => (
+                    <div key={key} className="mb-1">
+                        <span className="font-semibold">{key}:</span>{' '}
+                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : value?.toString()}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 const SystemLogsPage: React.FC = () => {
     const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
@@ -91,9 +127,9 @@ const SystemLogsPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    // TODO: Add state for date filters, log_name filter, etc.
-    // const [dateRange, setDateRange] = useState({ start: '', end: '' });
-    // const [selectedLogName, setSelectedLogName] = useState('');
+    const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+    const [selectedStatus, setSelectedStatus] = useState<'all' | 'success' | 'failed'>('all');
 
     const fetchLogs = useCallback(async (page = 1) => {
         setIsLoading(true);
@@ -101,25 +137,21 @@ const SystemLogsPage: React.FC = () => {
         try {
             const params = new URLSearchParams();
             params.append('page', page.toString());
-            params.append('per_page', '10'); // Number of logs per page
+            params.append('per_page', '10');
+            
             if (searchTerm.trim()) {
-                params.append('description', searchTerm); // Filter by description (action)
-                // Or use a more generic 'search' param if your backend handles it across multiple fields
+                params.append('search', searchTerm.trim());
             }
-            // TODO: Add other filter params to 'params' based on state
-            // if (dateRange.start) params.append('start_date', dateRange.start);
-            // if (dateRange.end) params.append('end_date', dateRange.end);
-            // if (selectedLogName) params.append('log_name', selectedLogName);
+            if (dateRange.start) params.append('start_date', dateRange.start);
+            if (dateRange.end) params.append('end_date', dateRange.end);
+            if (selectedTypes.length > 0) params.append('types', selectedTypes.join(','));
+            if (selectedStatus !== 'all') params.append('status', selectedStatus);
 
             const response = await apiClient.get<SystemLogsApiResponse>(`/admin/system-logs?${params.toString()}`);
             setLogs(response.data.data);
             setPagination(response.data.meta);
-            if (response.data.meta?.summary) { // Check if summary exists in meta
+            if (response.data.meta?.summary) {
                 setLogSummary(response.data.meta.summary);
-            } else {
-                // Fallback or indicate summary is not available
-                console.warn("Log summary not provided in API response meta.");
-                setLogSummary(null); // Or a default structure with zeros
             }
         } catch (err: any) {
             console.error("Failed to fetch system logs:", err);
@@ -127,7 +159,7 @@ const SystemLogsPage: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm]); // Removed currentPage from direct dependencies to avoid loop with setPagination
+    }, [searchTerm, dateRange, selectedTypes, selectedStatus]);
 
     useEffect(() => {
         fetchLogs(currentPage);
@@ -135,10 +167,34 @@ const SystemLogsPage: React.FC = () => {
 
     // Prepare data for summary cards using API data or defaults
     const summaryCardsData = useMemo(() => [
-        { label: 'Login Events', value: logSummary?.login_events ?? 0, icon: UserCheck, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30' },
-        { label: 'System Alerts Logged', value: logSummary?.system_alerts_logged ?? 0, icon: Bell, color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30' },
-        { label: 'Modifications', value: logSummary?.modifications ?? 0, icon: Shield, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-100 dark:bg-purple-900/30' },
-        { label: 'Violations Logged', value: logSummary?.violations ?? 0, icon: AlertCircle, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30' },
+        { 
+            label: 'Authentication Events', 
+            value: logSummary?.login_events ?? 0, 
+            icon: UserCheck, 
+            color: 'text-blue-600 dark:text-blue-400', 
+            bgColor: 'bg-blue-100 dark:bg-blue-900/30' 
+        },
+        { 
+            label: 'User Management', 
+            value: logSummary?.user_management ?? 0, 
+            icon: Users, 
+            color: 'text-indigo-600 dark:text-indigo-400', 
+            bgColor: 'bg-indigo-100 dark:bg-indigo-900/30' 
+        },
+        { 
+            label: 'Geofence Operations', 
+            value: logSummary?.geofence_operations ?? 0, 
+            icon: MapPin, 
+            color: 'text-green-600 dark:text-green-400', 
+            bgColor: 'bg-green-100 dark:bg-green-900/30' 
+        },
+        { 
+            label: 'IoT Operations', 
+            value: logSummary?.iot_operations ?? 0, 
+            icon: Smartphone, 
+            color: 'text-purple-600 dark:text-purple-400', 
+            bgColor: 'bg-purple-100 dark:bg-purple-900/30' 
+        }
     ], [logSummary]);
 
 
@@ -211,8 +267,8 @@ const SystemLogsPage: React.FC = () => {
                                         <td className="px-4 py-3 whitespace-nowrap"><LogTypeDisplay type={log.type} action={log.action} /></td>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{log.user_identifier}</td>
                                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{log.action}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}>
-                                            {typeof log.details === 'string' ? log.details : (log.details ? JSON.stringify(log.details) : 'N/A')}
+                                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                            <LogDetailsDisplay details={log.details} />
                                         </td>
                                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                             {log.subject_details?.type ? `${log.subject_details.type} (ID: ${log.subject_details.id || 'N/A'})` : 'N/A'}

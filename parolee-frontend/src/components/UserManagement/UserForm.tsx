@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { Save, X } from 'lucide-react';
 import type {
@@ -17,6 +18,10 @@ interface UserFormProps {
     initialData?: ApiUser | null;
     availableRoles: ApiRole[];
     availablePermissions: ApiPermission[];
+    canManageRoles: boolean;
+    canManagePermissions: boolean;
+    canAssignRoles: boolean;
+    canAssignPermissions: boolean;
     onSubmitSuccess: () => void;
     onClose: () => void;
 }
@@ -39,7 +44,8 @@ const getInitialFormData = (
             user_type: initialApiData.user_type,
             status: initialApiData.status,
             roles: initialApiData.roles?.map(role => role.name) || [],
-            directPermissions: initialApiData.direct_permissions?.map(p => p.name) || [], // Use direct_permissions from API
+            directPermissions: initialApiData.direct_permissions?.map(p => p.name) || [],
+            all_permissions:  initialApiData.all_permissions?.map(p => p.name) || [] , // Use direct_permissions from API
             password: '',
             password_confirmation: '',
             parolee_profile: { ...baseParoleeProfile, ...initialApiData.parolee_profile },
@@ -52,6 +58,7 @@ const getInitialFormData = (
         name: '', email: '', phone: '',
         user_type: intendedUserType, status: 'pending', roles: [],
         directPermissions: [],
+        all_permissions:[],
         password: '', password_confirmation: '',
         parolee_profile: baseParoleeProfile,
         officer_profile: baseOfficerProfile,
@@ -241,7 +248,7 @@ const UserForm: React.FC<UserFormProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
-                                    <input type="tel" name="phone" id="phone" value={formData.phone || ''} onChange={handleInputChange} className={inputStyle} />
+                                    <input type="tel" name="phone" id="phone" value={formData.phone ?? ''} onChange={handleInputChange} className={inputStyle} />
                                     {errors.phone && <p className={errMessageStyle}>{Array.isArray(errors.phone) ? errors.phone[0] : errors.phone}</p>}
                                 </div>
                                 <div>
@@ -252,7 +259,7 @@ const UserForm: React.FC<UserFormProps> = ({
                                     {errors.status && <p className={errMessageStyle}>{Array.isArray(errors.status) ? errors.status[0] : errors.status}</p>}
                                 </div>
                             </div>
-                             <div>
+                            <div>
                                 <label htmlFor="user_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">User Type <span className="text-red-500">*</span></label>
                                 <select name="user_type" id="user_type" value={formData.user_type} onChange={handleInputChange} required className={inputStyle} disabled={formMode === 'edit'}>
                                     {userTypesForSelect.map(type => <option key={type} value={type} className="capitalize">{type}</option>)}
@@ -284,7 +291,7 @@ const UserForm: React.FC<UserFormProps> = ({
                             {assignableRoles.length > 0 ? assignableRoles.map(role => (
                                 <label key={role.name} className="flex items-center cursor-pointer p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                                     <input type="checkbox" name="roles" value={role.name} checked={formData.roles?.includes(role.name)} onChange={handleRoleChange}
-                                        className="h-4 w-4 text-brand-purple-admin focus:ring-brand-purple-admin border-gray-300 dark:border-gray-500 rounded dark:bg-gray-600"/>
+                                        className="h-4 w-4 text-brand-purple-admin focus:ring-brand-purple-admin border-gray-300 dark:border-gray-500 rounded dark:bg-gray-600" />
                                     <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{role.name}</span>
                                 </label>
                             )) : <p className="text-xs text-gray-500 dark:text-gray-400">No roles available for assignment.</p>}
@@ -295,7 +302,7 @@ const UserForm: React.FC<UserFormProps> = ({
 
                     {availablePermissions.length > 0 && (
                         <fieldset className="mt-4 border-t pt-4 dark:border-gray-700">
-                            <legend className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Direct User Permissions</legend>
+                            <legend className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Assign permissions to user</legend>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                                 Assign specific permissions directly to this user. These supplement permissions granted by roles.
                             </p>
@@ -303,7 +310,7 @@ const UserForm: React.FC<UserFormProps> = ({
                                 {availablePermissions.map(permission => (
                                     <label key={permission.name} className="flex items-center cursor-pointer p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                                         <input type="checkbox" name="directPermissions" value={permission.name} checked={formData.directPermissions?.includes(permission.name)} onChange={handleDirectPermissionChange}
-                                            className="h-4 w-4 text-brand-purple-admin focus:ring-brand-purple-admin border-gray-300 dark:border-gray-500 rounded dark:bg-gray-600"/>
+                                            className="h-4 w-4 text-brand-purple-admin focus:ring-brand-purple-admin border-gray-300 dark:border-gray-500 rounded dark:bg-gray-600" />
                                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{permission.name}</span>
                                     </label>
                                 ))}
@@ -351,17 +358,17 @@ const UserForm: React.FC<UserFormProps> = ({
                                     <div><label htmlFor="officer_department" className="block text-sm font-medium">Department <span className="text-red-500">*</span></label><input type="text" name="department" id="officer_department" value={formData.officer_profile?.department || ''} onChange={(e) => handleProfileInputChange('officer_profile', e)} required className={inputStyle} />{errors['officer_profile.department'] && <p className={errMessageStyle}>{Array.isArray(errors['officer_profile.department']) ? errors['officer_profile.department'][0] : errors['officer_profile.department']}</p>}</div>
                                     <div><label htmlFor="officer_unit" className="block text-sm font-medium">Unit</label><input type="text" name="unit" id="officer_unit" value={formData.officer_profile?.unit || ''} onChange={(e) => handleProfileInputChange('officer_profile', e)} className={inputStyle} />{errors['officer_profile.unit'] && <p className={errMessageStyle}>{Array.isArray(errors['officer_profile.unit']) ? errors['officer_profile.unit'][0] : errors['officer_profile.unit']}</p>}</div>
                                 </div>
-                                <div><label htmlFor="officer_caseload" className="block text-sm font-medium">Caseload</label><input type="number" name="caseload" id="officer_caseload" value={formData.officer_profile?.caseload === undefined ? '' : formData.officer_profile.caseload} onChange={(e) => handleProfileInputChange('officer_profile', e)} className={inputStyle} min="0" />{errors['officer_profile.caseload'] && <p className={errMessageStyle}>{Array.isArray(errors['officer_profile.caseload']) ? errors['officer_profile.caseload'][0] : errors['officer_profile.caseload']}</p>}</div>
+                                <div><label htmlFor="officer_caseload" className="block text-sm font-medium">Caseload</label><input type="number" name="caseload" id="officer_caseload" value={formData.officer_profile?.caseload?.toString() === undefined ? '' : formData.officer_profile.caseload} onChange={(e) => handleProfileInputChange('officer_profile', e)} className={inputStyle} min="0" />{errors['officer_profile.caseload'] && <p className={errMessageStyle}>{Array.isArray(errors['officer_profile.caseload']) ? errors['officer_profile.caseload'][0] : errors['officer_profile.caseload']}</p>}</div>
                             </div>
                         </fieldset>
                     )}
 
                     {/* === Rehab Staff Profile Fields === */}
                     {formData.user_type === 'staff' && (
-                         <fieldset className="mt-4 border-t pt-4 dark:border-gray-700">
+                        <fieldset className="mt-4 border-t pt-4 dark:border-gray-700">
                             <legend className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-3">Staff Profile</legend>
                             <div className="space-y-4">
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div><label htmlFor="staff_staff_role" className="block text-sm font-medium">Staff Role <span className="text-red-500">*</span></label><input type="text" name="staff_role" id="staff_staff_role" value={formData.rehab_staff_profile?.staff_role || ''} onChange={(e) => handleProfileInputChange('rehab_staff_profile', e)} required className={inputStyle} />{errors['rehab_staff_profile.staff_role'] && <p className={errMessageStyle}>{Array.isArray(errors['rehab_staff_profile.staff_role']) ? errors['rehab_staff_profile.staff_role'][0] : errors['rehab_staff_profile.staff_role']}</p>}</div>
                                     <div><label htmlFor="staff_department" className="block text-sm font-medium">Department <span className="text-red-500">*</span></label><input type="text" name="department" id="staff_department" value={formData.rehab_staff_profile?.department || ''} onChange={(e) => handleProfileInputChange('rehab_staff_profile', e)} required className={inputStyle} />{errors['rehab_staff_profile.department'] && <p className={errMessageStyle}>{Array.isArray(errors['rehab_staff_profile.department']) ? errors['rehab_staff_profile.department'][0] : errors['rehab_staff_profile.department']}</p>}</div>
                                 </div>
@@ -377,7 +384,7 @@ const UserForm: React.FC<UserFormProps> = ({
                     <div className="flex justify-end space-x-3 pt-6 border-t dark:border-gray-700 mt-6">
                         <button type="button" onClick={onClose} className="secondary-button">Cancel</button>
                         <button type="submit" disabled={isSubmitting} className="primary-button">
-                            <Save size={16} className="mr-2"/>
+                            <Save size={16} className="mr-2" />
                             {isSubmitting ? 'Saving...' : (formMode === 'edit' ? 'Update User' : 'Create User')}
                         </button>
                     </div>

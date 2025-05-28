@@ -88,7 +88,8 @@ const OfficerDashboardPage: React.FC = () => {
     return (
         <OfficerLayout>
             <title>Law Enforcement Dashboard</title>
-            <div className="space-y-6"> {/* Removed p-6 from here, OfficerLayout's main has it */}
+             <div className="flex-1 p-6 ml-64">
+            <div className="space-y-8"> 
                 <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">Law Enforcement Dashboard</h1>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -152,6 +153,7 @@ const OfficerDashboardPage: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </OfficerLayout>
     );

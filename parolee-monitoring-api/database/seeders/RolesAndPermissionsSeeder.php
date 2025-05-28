@@ -48,9 +48,17 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Global Role & Permission Model Management
         Permission::firstOrCreate(['name' => 'manage roles', 'guard_name' => $guard]); // CRUD for Role model
+        Permission::firstOrCreate(['name' => 'view roles', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'create roles', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'edit roles', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'delete roles', 'guard_name' => $guard]);
+        
         Permission::firstOrCreate(['name' => 'manage permissions', 'guard_name' => $guard]); // CRUD for Permission model
-        Permission::firstOrCreate(['name' => 'assign permissions to roles', 'guard_name' => $guard]);
-
+        Permission::firstOrCreate(['name' => 'assign permissions', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'view permissions', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'create permissions', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'edit permissions', 'guard_name' => $guard]);
+        Permission::firstOrCreate(['name' => 'delete permissions', 'guard_name' => $guard]);
         // AI Insights
         Permission::firstOrCreate(['name' => 'view ai insights', 'guard_name' => $guard]);
 
@@ -78,6 +86,8 @@ class RolesAndPermissionsSeeder extends Seeder
         // Staff Specific - Messages & Notifications
         Permission::firstOrCreate(['name' => 'manage staff messages', 'guard_name' => $guard]); // <-- NEWLY ADDED
         Permission::firstOrCreate(['name' => 'view staff notifications', 'guard_name' => $guard]); // <-- NEWLY ADDED
+        Permission::firstOrCreate(['name' => 'send messages', 'guard_name' => $guard]); // <-- NEWLY ADDED
+
 
         // Officer Specific
         Permission::firstOrCreate(['name' => 'view officer assigned parolees', 'guard_name' => $guard]); // <-- NEWLY ADDED
@@ -127,6 +137,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage staff messages',
             'view staff notifications',
             'manage users',
+            'send messages',
         ]);
 
         // ROLE: Support Staff (Less privileged staff)
@@ -138,6 +149,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'view user profiles', // Limited view
             'view assessments', // Can view but not create/edit
             'view staff notifications',
+            'send messages',
             // No message management for basic support staff perhaps
         ]);
 

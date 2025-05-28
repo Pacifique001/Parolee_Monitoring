@@ -1,36 +1,29 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import axios from 'axios';
 
 interface Notification {
     id: string;
+    type: 'success' | 'error' | 'warning' | 'info';
     message: string;
-    timestamp: string;
-    read: boolean;
-    type: 'info' | 'warning' | 'error' | 'success';
-    link?: string;
+    duration?: number;
 }
 
 interface NotificationContextType {
     notifications: Notification[];
-    unreadCount: number;
-    markAsRead: (id: string) => void;
-    markAllAsRead: () => void;
-    clearNotifications: () => void;
-    loading: boolean;
-    error: string | null;
+    addNotification: (notification: Omit<Notification, 'id'>) => void;
+    removeNotification: (id: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// Export the provider component as default
+export default function NotificationProvider({ children }: { children: ReactNode }) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const { user } = useAuth();
 
     // Fetch notifications when user changes
-    useEffect(() => {
+    React.useEffect(() => {
         if (user) {
             fetchNotifications();
         }
@@ -38,70 +31,38 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     const fetchNotifications = async () => {
         try {
-            setLoading(true);
             const response = await axios.get('/api/notifications');
             // Ensure the response data is an array
             const notificationsData = Array.isArray(response.data) ? response.data : [];
             setNotifications(notificationsData);
-            setError(null);
         } catch (err) {
-            setError('Failed to fetch notifications');
             console.error('Error fetching notifications:', err);
             // Set empty array on error
             setNotifications([]);
-        } finally {
-            setLoading(false);
         }
     };
 
-    const markAsRead = async (id: string) => {
-        try {
-            await axios.patch(`/api/notifications/${id}/read`);
-            setNotifications(prev =>
-                prev.map(notification =>
-                    notification.id === id
-                        ? { ...notification, read: true }
-                        : notification
-                )
-            );
-        } catch (err) {
-            console.error('Error marking notification as read:', err);
-        }
-    };
+    const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
+        const id = Math.random().toString(36).substring(7);
+        const newNotification = { ...notification, id };
 
-    const markAllAsRead = async () => {
-        try {
-            await axios.patch('/api/notifications/read-all');
-            setNotifications(prev =>
-                prev.map(notification => ({ ...notification, read: true }))
-            );
-        } catch (err) {
-            console.error('Error marking all notifications as read:', err);
-        }
-    };
+        setNotifications(prev => [...prev, newNotification]);
 
-    const clearNotifications = async () => {
-        try {
-            await axios.delete('/api/notifications');
-            setNotifications([]);
-        } catch (err) {
-            console.error('Error clearing notifications:', err);
+        if (notification.duration !== 0) {
+            setTimeout(() => {
+                removeNotification(id);
+            }, notification.duration || 5000);
         }
-    };
+    }, []);
 
-    // Ensure notifications is always an array before filtering
-    const unreadCount = Array.isArray(notifications) 
-        ? notifications.filter(n => !n.read).length 
-        : 0;
+    const removeNotification = useCallback((id: string) => {
+        setNotifications(prev => prev.filter(notification => notification.id !== id));
+    }, []);
 
     const value = {
-        notifications: Array.isArray(notifications) ? notifications : [],
-        unreadCount,
-        markAsRead,
-        markAllAsRead,
-        clearNotifications,
-        loading,
-        error
+        notifications,
+        addNotification,
+        removeNotification
     };
 
     return (
@@ -109,12 +70,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             {children}
         </NotificationContext.Provider>
     );
-};
+}
 
+// Export the hook as a named export
 export const useNotifications = () => {
     const context = useContext(NotificationContext);
-    if (context === undefined) {
+    if (!context) {
         throw new Error('useNotifications must be used within a NotificationProvider');
     }
     return context;
 };
+
+// Also export the provider as a named export for flexibility
+export { NotificationProvider };
