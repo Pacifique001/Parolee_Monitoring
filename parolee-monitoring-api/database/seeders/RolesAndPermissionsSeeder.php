@@ -119,8 +119,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'view geofence alerts', // Scoped
             'view ai insights',     // Scoped
             'manage officer communications',
-            // Officers might also view assessments related to their parolees, but not manage them
-            'view assessments',
         ]);
 
         // ROLE: Case Manager (Primary Staff Role)

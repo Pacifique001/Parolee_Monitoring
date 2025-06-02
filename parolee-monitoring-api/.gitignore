@@ -21,3 +21,5 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+parolee-monitoring-api/date-fns
+parolee-monitoring-api/lucide-react
