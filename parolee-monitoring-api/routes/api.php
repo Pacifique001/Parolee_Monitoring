@@ -222,7 +222,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                     ->middleware('permission:view assessments')
                     ->name('index');
                 Route::post('/', [ApiStaffAssessmentController::class, 'store'])
-                    ->middleware('permission:create assessments')
+                    ->middleware('permission:manage assessments')
                     ->name('store');
                 Route::get('/{assessment}', [ApiStaffAssessmentController::class, 'show'])
                     ->middleware('permission:view assessments')
@@ -231,7 +231,7 @@ Route::prefix('v1')->name('api.v1.')->group(function () {
                     ->middleware('permission:edit assessments')
                     ->name('update');
                 Route::delete('/{assessment}', [ApiStaffAssessmentController::class, 'destroy'])
-                    ->middleware('permission:delete assessments')
+                    ->middleware('permission:manage assessments')
                     ->name('destroy');
             });
 
